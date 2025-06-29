@@ -25,6 +25,7 @@ np_random = np.random
 class SnakeEnv:
     def __init__(self, grid_size: int = GRID_SIZE):
         self.grid_size = grid_size
+        self.custom_reward_fn = None
         self.reset()
 
     def reset(self) -> np.ndarray:
@@ -57,17 +58,28 @@ class SnakeEnv:
                 not 0 <= new_head[1] < self.grid_size or
                 new_head in self.snake):
             self.done = True
-            return self._get_state(), -1, True, {'score': self.score}
+            reward = self.get_reward(collision=True, ate_food=False)
+            return self._get_state(), reward, True, {'score': self.score}
         # Move snake
         self.snake.insert(0, new_head)
-        reward = 0
-        if new_head == self.food:
-            reward = 1
+        ate_food = new_head == self.food
+        if ate_food:
             self.score += 1
             self.spawn_food()
         else:
             self.snake.pop()
+        reward = self.get_reward(collision=False, ate_food=ate_food)
         return self._get_state(), reward, self.done, {'score': self.score}
+
+    def get_reward(self, collision: bool, ate_food: bool) -> int:
+        """Reward function: override or modify for custom RL reward shaping."""
+        if self.custom_reward_fn is not None:
+            return self.custom_reward_fn(collision=collision, ate_food=ate_food, env=self)
+        if collision:
+            return -1
+        if ate_food:
+            return 1
+        return 0
 
     def _get_state(self) -> np.ndarray:
         # State: (grid, grid, 3) uint8
@@ -102,6 +114,13 @@ def step(action: int) -> Tuple[np.ndarray, int, bool, Dict]:
 def np_random():
     """Expose numpy.random for RL example in README."""
     return np.random
+
+
+def set_reward_fn(reward_fn):
+    global _env
+    if _env is None:
+        _env = SnakeEnv()
+    _env.custom_reward_fn = reward_fn
 
 
 # Human play demo

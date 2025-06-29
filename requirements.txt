@@ -2,4 +2,6 @@ pygame
 numpy
 gym
 stable-baselines3
-shimmy 
+shimmy
+torch
+torchvision 
